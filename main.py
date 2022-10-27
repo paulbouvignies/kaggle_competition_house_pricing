@@ -34,7 +34,7 @@ def preprocess_data(df):
     print(features_with_missing_values.index)
     # Drop features with more than 70% missing values
     df.drop(features_with_missing_values.index, axis=1, inplace=True)
-    print("preprocess_data -> after drop missing values : ",len(df.columns))
+    print("preprocess_data -> after drop missing values : ", len(df.columns))
     config.generate_chart(
         create_chart,
         "Features with more than {}% missing values".format(tolerance),
@@ -46,18 +46,13 @@ def preprocess_data(df):
 
     # Numerical features
     df_train_x_numerical = pd.get_dummies(df)
-    print("preprocess_data -> after dummies : ",len(df_train_x_numerical.columns))
+    print("preprocess_data -> after dummies : ", len(df_train_x_numerical.columns))
 
-#########
-    # Saving the columns in a list
-    cols = df_train_x_numerical.columns.tolist()
-    cols.fillna(0, inplace=True)
-#########
+    df_train_x_numerical.fillna(0, inplace=True)
 
-    #df_train_x_numerical.fillna(0, inplace=True)
     # save to csv
-    #df_train_x_numerical.to_csv("df_test_x_numerical.csv", index=False)
-    print("preprocess_data -> after filna : ",len(df_train_x_numerical.columns))
+    # df_train_x_numerical.to_csv("df_test_x_numerical.csv", index=False)
+    print("preprocess_data -> after filna : ", len(df_train_x_numerical.columns))
 
     df = df_train_x_numerical
     print("-----" * 10)
@@ -100,4 +95,4 @@ model_trained = train_linear_model(df_train_x_preprocessed, df_train_y)
 # Preprocess test data
 df_test_preprocessed = preprocess_data(df_test)
 # print(len(df_test_preprocessed.columns))
-model_trained.predict(df_test_preprocessed)
+# model_trained.predict(df_test_preprocessed)
