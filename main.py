@@ -16,6 +16,7 @@ print("df_test.shape: {}".format(df_test.shape))
 
 # Preprocess data
 def preprocess_data(type, df, train_enc=None):
+    global final_df
     print("-----" * 10)
     print(df.shape)
     # Get percentage of missing values
@@ -44,14 +45,22 @@ def preprocess_data(type, df, train_enc=None):
         "Percentage of missing values"
     )
 
+    # Fill missing values with mean value
+    for feature in df.columns:
+        if df[feature].isnull().sum() > 0:
+            print("Feature: {} has {} missing values".format(feature, df[feature].isnull().sum()))
+            # replace missing values with mean
+            if df[feature].dtype == "object":
+                df[feature].fillna(df[feature].mode()[0], inplace=True)
+            else:
+                df[feature].fillna(df[feature].mean(), inplace=True)
+
     # One hot encoding the categorical columns in training set
     from sklearn.preprocessing import OneHotEncoder
     ohe = OneHotEncoder(sparse=False, handle_unknown='ignore')
 
     # Get categorical columns -> Deprecated command
     categorical_columns = df.select_dtypes(include=['object']).columns
-    print("categorical_columns: {}".format(len(categorical_columns)))
-    print(categorical_columns)
 
     if type == "train":
         train_enc = ohe.fit(df[categorical_columns])
@@ -61,20 +70,6 @@ def preprocess_data(type, df, train_enc=None):
         test_enc = train_enc.transform(df[categorical_columns])
         final_df = pd.DataFrame(test_enc)
 
-    # Numerical features
-    # df_train_x_numerical = pd.get_dummies(df)
-    # print("preprocess_data -> after dummies : ", len(df_train_x_numerical.columns))
-
-    # Fill missing values -> TODO : instead of filling with 0, fill with median
-    # df_train_x_numerical.fillna(0, inplace=True)
-
-    # save to csv [debug]
-    # df_train_x_numerical.to_csv("df_test_x_numerical.csv", index=False)
-
-    # print("preprocess_data -> after filna : ", len(df_train_x_numerical.columns))
-
-    # df = df_train_x_numerical
-    # print("-----" * 10)
 
     return final_df, train_enc
 
@@ -117,7 +112,5 @@ df_test_preprocessed, test = preprocess_data('test', df_test, onehoencodertraine
 prediction = model_trained.predict(df_test_preprocessed)
 
 # Save to csv
-df_submission = pd.DataFrame({'Id': df_test.Id, 'SalePrice': prediction})
-df_submission.to_csv('sample_submission.csv', index=False)
-
-print(prediction)
+config.generate_submission(df_test,prediction)
+# print(prediction)
