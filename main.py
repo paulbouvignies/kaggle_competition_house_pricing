@@ -2,17 +2,29 @@
 # 1: Linear Regression -> 2563315756838200.00000
 # 2: Linear Regression -> 256776187267913.00000
 # 3: Random Forest Regression  -> 26602.59778 🎉
+# 4: Random Forest Regression  -> 26235.04907
+# 4: Random Forest Regression  -> 26103.75951
+# 5: Random Forest Regression  -> 26018.75509
+# 26018.75509
 
+import joblib
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn import preprocessing
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error
-
+from sklearn.model_selection import GridSearchCV
+from sklearn.linear_model import Lasso
+import seaborn as sns
+import matplotlib.pyplot as plt
+import plotly.express as px
+from sklearn.pipeline import make_pipeline, Pipeline
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 
 import config
 
 create_chart = False
+config.submition_scoring(False)
 
 # Read data
 df_train = pd.read_csv("train.csv")
@@ -59,6 +71,24 @@ def preprocess_data(type, df, train_enc=None):
             else:
                 df[feature].fillna(df[feature].mean(), inplace=True)
 
+    # get all outliers for each feature TODO: improve this
+    for feature in df.columns:
+        if df[feature].dtype != "object":
+            # boxplot
+            config.generate_barplot(create_chart, df[feature], feature)
+            # fig = px.histogram(df, x=df[feature], marginal="box")
+            # fig.show()
+
+            # get outliers
+            q1 = df[feature].quantile(0.25)
+            q3 = df[feature].quantile(0.75)
+            iqr = q3 - q1
+            lower_bound = q1 - (1.5 * iqr)
+            upper_bound = q3 + (1.5 * iqr)
+            # remplace outliers with mean
+            df[feature] = df[feature].apply(lambda x: df[feature].mean() if x < lower_bound or x > upper_bound else x)
+            config.generate_barplot(create_chart, df[feature], feature)
+
     # One hot encoding the categorical columns in training set
     from sklearn.preprocessing import OneHotEncoder
     ohe = OneHotEncoder(sparse=False, handle_unknown='ignore')
@@ -69,23 +99,35 @@ def preprocess_data(type, df, train_enc=None):
     if type == "train":
         train_enc = ohe.fit(df[categorical_columns])
         final_df = pd.DataFrame(train_enc.transform(df[categorical_columns]))
-
     if type == "test":
         test_enc = train_enc.transform(df[categorical_columns])
         final_df = pd.DataFrame(test_enc)
 
-
     return final_df, train_enc
 
 
-# Train Linear Model
-def train_model(modelType,df_x, df_y):
+# Train Model
+def train_model(modelType, df_x, df_y):
     model = None
-    if  modelType == "linear":
+    if modelType == "linear":
         model = LinearRegression()
         model.fit(df_x, df_train_y)
     elif modelType == "random_forest":
-        model = RandomForestRegressor(n_estimators=100, random_state=0)
+        pipeline = Pipeline([('model', RandomForestRegressor())])
+
+        random_forest_param_grid = {
+            "model__n_estimators": [10, 25, 35, 45, 55, 60,  100, 200],
+            "model__max_leaf_nodes": [10, 25, 35, 45, 55, 60, 100, 200],
+            "model__max_depth": [10, 25, 35, 45, 55, 60, 100, 200],
+            "model__min_samples_split": [10, 25, 35, 45, 55, 60, 100, 200],
+        }
+
+        # CV set to 5
+        # random_forest_grid = GridSearchCV(pipeline, cv=5, param_grid=random_forest_param_grid, n_jobs=-1)
+        # random_forest_grid.fit(df_x, df_y)
+        # print(random_forest_grid.best_estimator_)
+
+        model = RandomForestRegressor(max_depth=400, max_leaf_nodes=300, min_samples_split=10, n_estimators=35)
         model.fit(df_x, df_train_y)
     else:
         print("train_model -> modelType not found")
@@ -93,8 +135,10 @@ def train_model(modelType,df_x, df_y):
     if model is not None:
         model_score = model.score(df_x, df_y)
         print("Model score: {}".format(model_score))
+        # save model
+        print("Your model was successfully saved!")
+        joblib.dump(model, 'model.pkl')
         return model
-
 
 
 # Predict
@@ -114,8 +158,7 @@ df_train_y = df_train.SalePrice
 df_train_x_preprocessed, onehoencodertrained = preprocess_data('train', df_train_x)
 
 # Train model
-linear_model_trained = train_model('random_forest',df_train_x_preprocessed, df_train_y)
-
+linear_model_trained = train_model('random_forest', df_train_x_preprocessed, df_train_y)
 
 #######
 # PREDICTION
@@ -123,9 +166,8 @@ linear_model_trained = train_model('random_forest',df_train_x_preprocessed, df_t
 #######
 # Preprocess test data
 df_test_preprocessed, test = preprocess_data('test', df_test, onehoencodertrained)
-# print(len(df_test_preprocessed.columns))
 prediction = linear_model_trained.predict(df_test_preprocessed)
 
 # Save to csv
-config.generate_submission(df_test,prediction)
-# print(prediction)
+config.generate_submission(df_test, prediction)
+print(prediction)

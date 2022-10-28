@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 import pandas as pd
 
@@ -18,7 +19,34 @@ def generate_chart(enabled=False, title='title', x=0, y=0, x_label="x_label", y_
         plt.show()
 
 
-def generate_submission(df_test,prediction):
+def generate_barplot(enabled, df, feature):
+    if enabled:
+        sns.boxplot(df)
+        plt.title("Boxplot for {}".format(feature))
+        plt.show()
+
+
+def generate_submission(df_test, prediction):
     df_submission = pd.DataFrame({'Id': df_test.Id, 'SalePrice': prediction})
     df_submission.to_csv('sample_submission.csv', index=False)
     print("Your submission was successfully saved!")
+
+
+def submition_scoring(enabled=False):
+    score = [
+        2563315756838200.00000,
+        256776187267913.00000,
+        26602.59778
+    ]
+    if enabled:
+        # draw chart with all score values
+        generate_chart(enabled=True, title='Score', x=score, y=score, x_label="Score", y_label="Score")
+
+
+def get_outliers(df, feature):
+    q1 = df[feature].quantile(0.25)
+    q3 = df[feature].quantile(0.75)
+    iqr = q3 - q1
+    lower_bound = q1 - (1.5 * iqr)
+    upper_bound = q3 + (1.5 * iqr)
+    return df[(df[feature] < lower_bound) | (df[feature] > upper_bound)]
