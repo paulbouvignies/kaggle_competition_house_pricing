@@ -1,6 +1,14 @@
+# SUBMIT VERSIONING
+# 1: Linear Regression -> 2563315756838200.00000
+# 2: Linear Regression -> 256776187267913.00000
+# 3: Random Forest Regression  -> 26602.59778 🎉
+
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn import preprocessing
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error
+
 
 import config
 
@@ -16,9 +24,6 @@ print("df_test.shape: {}".format(df_test.shape))
 
 # Preprocess data
 def preprocess_data(type, df, train_enc=None):
-    global final_df
-    print("-----" * 10)
-    print(df.shape)
     # Get percentage of missing values
     percentage_missing_values = df.isnull().sum() / len(df) * 100
     config.generate_chart(
@@ -48,7 +53,6 @@ def preprocess_data(type, df, train_enc=None):
     # Fill missing values with mean value
     for feature in df.columns:
         if df[feature].isnull().sum() > 0:
-            print("Feature: {} has {} missing values".format(feature, df[feature].isnull().sum()))
             # replace missing values with mean
             if df[feature].dtype == "object":
                 df[feature].fillna(df[feature].mode()[0], inplace=True)
@@ -75,18 +79,28 @@ def preprocess_data(type, df, train_enc=None):
 
 
 # Train Linear Model
-def train_linear_model(df_x, df_y):
-    model = LinearRegression()
-    model.fit(df_x, df_train_y)
-    model_score = model.score(df_x, df_y)
-    print("Model score: {}".format(model_score))
-    return model
+def train_model(modelType,df_x, df_y):
+    model = None
+    if  modelType == "linear":
+        model = LinearRegression()
+        model.fit(df_x, df_train_y)
+    elif modelType == "random_forest":
+        model = RandomForestRegressor(n_estimators=100, random_state=0)
+        model.fit(df_x, df_train_y)
+    else:
+        print("train_model -> modelType not found")
+
+    if model is not None:
+        model_score = model.score(df_x, df_y)
+        print("Model score: {}".format(model_score))
+        return model
+
 
 
 # Predict
 def predict(model, df):
     predictions = model.predict(df)
-    print(predictions)
+    return predictions
 
 
 #######
@@ -100,7 +114,8 @@ df_train_y = df_train.SalePrice
 df_train_x_preprocessed, onehoencodertrained = preprocess_data('train', df_train_x)
 
 # Train model
-model_trained = train_linear_model(df_train_x_preprocessed, df_train_y)
+linear_model_trained = train_model('random_forest',df_train_x_preprocessed, df_train_y)
+
 
 #######
 # PREDICTION
@@ -109,7 +124,7 @@ model_trained = train_linear_model(df_train_x_preprocessed, df_train_y)
 # Preprocess test data
 df_test_preprocessed, test = preprocess_data('test', df_test, onehoencodertrained)
 # print(len(df_test_preprocessed.columns))
-prediction = model_trained.predict(df_test_preprocessed)
+prediction = linear_model_trained.predict(df_test_preprocessed)
 
 # Save to csv
 config.generate_submission(df_test,prediction)
