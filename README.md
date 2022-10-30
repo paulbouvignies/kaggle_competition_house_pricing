@@ -28,7 +28,7 @@ To strengthen the dataset, I replace all missing values by the mean of the featu
 
 ### iii. Get outliers and replace values <a name="df3"></a>
 <img alt="screenshot" src="md_ressources/screenshot_3.png" width="50%"/><img alt="screenshot" src="md_ressources/screenshot_4.png" width="50%"/>
-Ro refine the dataset I replace the exrtemes values by the mean of the feature 
+To refine the dataset I replace the exrtemes values by the mean of the feature 
 
 ### iv. Transform features by numerical categories <a name="df4"></a>
 To allow the training of the model, I convert the features into numerical values that can be computed 

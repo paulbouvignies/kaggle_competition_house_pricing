@@ -21,7 +21,6 @@ import plotly.express as px
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 
-
 import config
 
 create_chart = False
@@ -34,10 +33,9 @@ df_test = pd.read_csv("input_dataset/test.csv")
 print("df_train.shape: {}".format(df_train.shape))
 print("df_test.shape: {}".format(df_test.shape))
 
+
 # Preprocess data
 def preprocess_data(type, df, train_enc=None):
-
-
     # Get percentage of missing values
     percentage_missing_values = df.isnull().sum() / len(df) * 100
     config.generate_chart(
@@ -77,9 +75,9 @@ def preprocess_data(type, df, train_enc=None):
     for feature in df.columns:
         if df[feature].dtype != "object":
             # boxplot
-            config.generate_barplot(True, df[feature], feature)
-            #fig = px.histogram(df, x=df[feature], marginal="box")
-            #fig.show()
+            config.generate_barplot(False, df[feature], feature)
+            # fig = px.histogram(df, x=df[feature], marginal="box")
+            # fig.show()
 
             # get outliers
             q1 = df[feature].quantile(0.25)
@@ -101,10 +99,6 @@ def preprocess_data(type, df, train_enc=None):
     # df["hasgarage"] = df["GarageArea"].apply(lambda x: 1 if x > 0 else 0)
     # df["hasbsmt"] = df["TotalBsmtSF"].apply(lambda x: 1 if x > 0 else 0)
     # df["hasfireplace"] = df["Fireplaces"].apply(lambda x: 1 if x > 0 else 0)
-
-
-
-
 
     # One hot encoding the categorical columns in training set
     from sklearn.preprocessing import OneHotEncoder
@@ -182,8 +176,6 @@ def train_model(modelType, df_x, df_y):
 def predict(model, df):
     predictions = model.predict(df)
     return predictions
-
-
 
 
 #######
