@@ -77,9 +77,9 @@ def preprocess_data(type, df, train_enc=None):
     for feature in df.columns:
         if df[feature].dtype != "object":
             # boxplot
-            config.generate_barplot(create_chart, df[feature], feature)
-            # fig = px.histogram(df, x=df[feature], marginal="box")
-            # fig.show()
+            config.generate_barplot(True, df[feature], feature)
+            #fig = px.histogram(df, x=df[feature], marginal="box")
+            #fig.show()
 
             # get outliers
             q1 = df[feature].quantile(0.25)

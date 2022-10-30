@@ -20,10 +20,15 @@
 ## Data preparation <a name="introduction"></a>
 ### Drop of columns with too many missing values <a name="df1"></a>
 <img alt="screenshot" src="md_ressources/screenshot_1.png" width="50%"/><img alt="screenshot" src="md_ressources/screenshot_2.png" width="50%"/>
-The first step was to look at the percentage of missing values in changes features. On this percentage is over 70% I choose to delete the feature 
+The first step was to look at the percentage of missing values in changes features. 
+If this percentage is over 70% I choose to delete the feature 
 
 ### Replace missing values <a name="df2"></a>
+To strengthen the dataset, I replace all missing values by the mean of the features
 
 ### Get outliers and replace values <a name="df3"></a>
+<img alt="screenshot" src="md_ressources/screenshot_3.png" width="50%"/><img alt="screenshot" src="md_ressources/screenshot_4.png" width="50%"/>
+Ro refine the dataset I replace the exrtemes values by the mean of the feature 
 
 ### Transform features by numerical categories <a name="df4"></a>
+To allow the training of the model, I convert the features into numerical values that can be computed 
