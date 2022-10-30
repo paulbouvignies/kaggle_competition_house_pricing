@@ -28,8 +28,8 @@ create_chart = False
 config.submition_scoring(False)
 
 # Read data
-df_train = pd.read_csv("train.csv")
-df_test = pd.read_csv("test.csv")
+df_train = pd.read_csv("input_dataset/train.csv")
+df_test = pd.read_csv("input_dataset/test.csv")
 
 print("df_train.shape: {}".format(df_train.shape))
 print("df_test.shape: {}".format(df_test.shape))
@@ -165,12 +165,16 @@ def train_model(modelType, df_x, df_y):
         model = bagging_regressor
     else:
         print("train_model -> modelType not found")
+
     if model is not None:
         model_score = model.score(df_x, df_y)
         print("Model score: {}".format(model_score))
         # save model
         print("Your model was successfully saved!")
-        joblib.dump(model, 'model.pkl')
+
+        import datetime
+        now = datetime.datetime.now()
+        joblib.dump(model, './saved_model/model_{}.pkl'.format(now.strftime("%Y-%m-%d_%H-%M")))
         return model
 
 
@@ -193,14 +197,14 @@ df_train_y = df_train.SalePrice
 df_train_x_preprocessed, onehoencodertrained = preprocess_data('train', df_train_x)
 
 # Train model
-linear_model_trained = train_model('test', df_train_x_preprocessed, df_train_y)
+linear_model_trained = train_model('BaggingRegressor', df_train_x_preprocessed, df_train_y)
 
 #######
 # PREDICTION
 # Submissions are evaluated on Root-Mean-Squared-Error (RMSE)
 #######
 # Preprocess test data
-df_test_preprocessed, test = preprocess_data('BaggingRegressor', df_test, onehoencodertrained)
+df_test_preprocessed, test = preprocess_data('test', df_test, onehoencodertrained)
 prediction = linear_model_trained.predict(df_test_preprocessed)
 
 # Save to csv

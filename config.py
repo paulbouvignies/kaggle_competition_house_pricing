@@ -27,8 +27,12 @@ def generate_barplot(enabled, df, feature):
 
 
 def generate_submission(df_test, prediction):
+    import datetime
+    now = datetime.datetime.now()
+
     df_submission = pd.DataFrame({'Id': df_test.Id, 'SalePrice': prediction})
-    df_submission.to_csv('sample_submission.csv', index=False)
+    df_submission.to_csv('./output_dataset/sample_submission.csv', index=False)
+    df_submission.to_csv('./output_dataset/sample_submission_{}.csv'.format(now.strftime("%Y-%m-%d_%H-%M")), index=False)
     print("Your submission was successfully saved!")
 
 
