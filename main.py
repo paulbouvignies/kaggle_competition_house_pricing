@@ -1,11 +1,11 @@
 # SUBMIT VERSIONING
 # 1: Linear Regression -> 2563315756838200.00000
 # 2: Linear Regression -> 256776187267913.00000
-# 3: Random Forest Regression  -> 26602.59778 🎉
+# 3: Random Forest Regression  -> 26602.59778
 # 4: Random Forest Regression  -> 26235.04907
 # 4: Random Forest Regression  -> 26103.75951
 # 5: Random Forest Regression  -> 26018.75509
-# 26018.75509
+# 5: Random Forest Regression  -> 26018.75509 🎉
 
 import joblib
 import pandas as pd
@@ -21,6 +21,7 @@ import plotly.express as px
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 
+
 import config
 
 create_chart = False
@@ -33,9 +34,10 @@ df_test = pd.read_csv("test.csv")
 print("df_train.shape: {}".format(df_train.shape))
 print("df_test.shape: {}".format(df_test.shape))
 
-
 # Preprocess data
 def preprocess_data(type, df, train_enc=None):
+
+
     # Get percentage of missing values
     percentage_missing_values = df.isnull().sum() / len(df) * 100
     config.generate_chart(
@@ -89,6 +91,21 @@ def preprocess_data(type, df, train_enc=None):
             df[feature] = df[feature].apply(lambda x: df[feature].mean() if x < lower_bound or x > upper_bound else x)
             config.generate_barplot(create_chart, df[feature], feature)
 
+    # Create new features
+    # df["TotalSF"] = df["TotalBsmtSF"] + df["1stFlrSF"] + df["2ndFlrSF"]
+    # df["Total_sqr_footage"] = (df["BsmtFinSF1"] + df["BsmtFinSF2"] + df["1stFlrSF"] + df["2ndFlrSF"])
+    # df["Total_Bathrooms"] = (df["FullBath"] + (0.5 * df["HalfBath"]) + df["BsmtFullBath"] + (0.5 * df["BsmtHalfBath"]))
+    # df["Total_porch_sf"] = (df["OpenPorchSF"] + df["3SsnPorch"] + df["EnclosedPorch"] + df["ScreenPorch"] + df["WoodDeckSF"])
+    # df["haspool"] = df["PoolArea"].apply(lambda x: 1 if x > 0 else 0)
+    # df["has2ndfloor"] = df["2ndFlrSF"].apply(lambda x: 1 if x > 0 else 0)
+    # df["hasgarage"] = df["GarageArea"].apply(lambda x: 1 if x > 0 else 0)
+    # df["hasbsmt"] = df["TotalBsmtSF"].apply(lambda x: 1 if x > 0 else 0)
+    # df["hasfireplace"] = df["Fireplaces"].apply(lambda x: 1 if x > 0 else 0)
+
+
+
+
+
     # One hot encoding the categorical columns in training set
     from sklearn.preprocessing import OneHotEncoder
     ohe = OneHotEncoder(sparse=False, handle_unknown='ignore')
@@ -98,7 +115,8 @@ def preprocess_data(type, df, train_enc=None):
 
     if type == "train":
         train_enc = ohe.fit(df[categorical_columns])
-        final_df = pd.DataFrame(train_enc.transform(df[categorical_columns]))
+        train_enc_transformed = train_enc.transform(df[categorical_columns])
+        final_df = pd.DataFrame(train_enc_transformed)
     if type == "test":
         test_enc = train_enc.transform(df[categorical_columns])
         final_df = pd.DataFrame(test_enc)
@@ -116,22 +134,37 @@ def train_model(modelType, df_x, df_y):
         pipeline = Pipeline([('model', RandomForestRegressor())])
 
         random_forest_param_grid = {
-            "model__n_estimators": [10, 25, 35, 45, 55, 60,  100, 200],
-            "model__max_leaf_nodes": [10, 25, 35, 45, 55, 60, 100, 200],
-            "model__max_depth": [10, 25, 35, 45, 55, 60, 100, 200],
-            "model__min_samples_split": [10, 25, 35, 45, 55, 60, 100, 200],
+            "model__n_estimators": [35],
+            "model__max_leaf_nodes": [300],
+            "model__max_depth": [400],
+            "model__min_samples_split": [10],
+            "model__min_samples_leaf": [10, 25, 35, 45, 55, 60, 100, 200],
+            "model__max_features": [10, 25, 35, 45, 55, 60, 100, 200],
+            "model__bootstrap": [True, False]
         }
 
-        # CV set to 5
         # random_forest_grid = GridSearchCV(pipeline, cv=5, param_grid=random_forest_param_grid, n_jobs=-1)
         # random_forest_grid.fit(df_x, df_y)
         # print(random_forest_grid.best_estimator_)
 
         model = RandomForestRegressor(max_depth=400, max_leaf_nodes=300, min_samples_split=10, n_estimators=35)
         model.fit(df_x, df_train_y)
+    elif modelType == "BaggingRegressor":
+        # try bagging regressor
+        from sklearn.ensemble import BaggingRegressor
+        from sklearn.tree import DecisionTreeRegressor
+        bagging_regressor = BaggingRegressor(
+            DecisionTreeRegressor(),
+            n_estimators=500,
+            max_samples=100,
+            bootstrap=True,
+            n_jobs=-1,
+            oob_score=True
+        )
+        bagging_regressor.fit(df_x, df_train_y)
+        model = bagging_regressor
     else:
         print("train_model -> modelType not found")
-
     if model is not None:
         model_score = model.score(df_x, df_y)
         print("Model score: {}".format(model_score))
@@ -147,6 +180,8 @@ def predict(model, df):
     return predictions
 
 
+
+
 #######
 # TRAINING
 #######
@@ -158,14 +193,14 @@ df_train_y = df_train.SalePrice
 df_train_x_preprocessed, onehoencodertrained = preprocess_data('train', df_train_x)
 
 # Train model
-linear_model_trained = train_model('random_forest', df_train_x_preprocessed, df_train_y)
+linear_model_trained = train_model('test', df_train_x_preprocessed, df_train_y)
 
 #######
 # PREDICTION
 # Submissions are evaluated on Root-Mean-Squared-Error (RMSE)
 #######
 # Preprocess test data
-df_test_preprocessed, test = preprocess_data('test', df_test, onehoencodertrained)
+df_test_preprocessed, test = preprocess_data('BaggingRegressor', df_test, onehoencodertrained)
 prediction = linear_model_trained.predict(df_test_preprocessed)
 
 # Save to csv
