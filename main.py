@@ -12,7 +12,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn import preprocessing
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import Lasso
 import seaborn as sns
@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+import numpy as np
 
 import config
 
@@ -69,7 +70,7 @@ def preprocess_data(type, df, train_enc=None):
             if df[feature].dtype == "object":
                 df[feature].fillna(df[feature].mode()[0], inplace=True)
             else:
-                df[feature].fillna(df[feature].mean(), inplace=True)
+                df[feature].fillna(df[feature].median() , inplace=True)
 
     # get all outliers for each feature TODO: improve this
     for feature in df.columns:
@@ -86,7 +87,16 @@ def preprocess_data(type, df, train_enc=None):
             lower_bound = q1 - (1.5 * iqr)
             upper_bound = q3 + (1.5 * iqr)
             # remplace outliers with mean
-            df[feature] = df[feature].apply(lambda x: df[feature].mean() if x < lower_bound or x > upper_bound else x)
+            #df[feature] = df[feature].apply(lambda x: df[feature].mean() if x < lower_bound or x > upper_bound else x)
+
+            # remplace outliers with median
+            df[feature] = df[feature].apply(lambda x: df[feature].median() if x < lower_bound or x > upper_bound else x)
+
+            # replace outliers with k nearest neighbors
+            # from sklearn.impute import KNNImputer
+            # imputer = KNNImputer(n_neighbors=2)
+            # df[feature] = imputer.fit_transform(df[feature].values.reshape(-1, 1))
+
             config.generate_barplot(create_chart, df[feature], feature)
 
     # Create new features
@@ -128,35 +138,101 @@ def train_model(modelType, df_x, df_y):
         pipeline = Pipeline([('model', RandomForestRegressor())])
 
         random_forest_param_grid = {
-            "model__n_estimators": [35],
-            "model__max_leaf_nodes": [300],
-            "model__max_depth": [400],
-            "model__min_samples_split": [10],
+            "model__n_estimators": [200],
+            "model__max_leaf_nodes": [50],
+            "model__max_depth": [50],
+            "model__min_samples_split": [10, 20],
             "model__min_samples_leaf": [10, 25, 35, 45, 55, 60, 100, 200],
             "model__max_features": [10, 25, 35, 45, 55, 60, 100, 200],
             "model__bootstrap": [True, False]
         }
 
-        # random_forest_grid = GridSearchCV(pipeline, cv=5, param_grid=random_forest_param_grid, n_jobs=-1)
-        # random_forest_grid.fit(df_x, df_y)
-        # print(random_forest_grid.best_estimator_)
+        #random_forest_grid = GridSearchCV(pipeline, cv=5, param_grid=random_forest_param_grid, n_jobs=-1)
+        #random_forest_grid.fit(df_x, df_y)
+        #print(random_forest_grid.best_estimator_)
 
-        model = RandomForestRegressor(max_depth=400, max_leaf_nodes=300, min_samples_split=10, n_estimators=35)
+        model = RandomForestRegressor(bootstrap=False, max_depth=50,
+                                       max_features=100, max_leaf_nodes=50,
+                                       min_samples_leaf=10,
+                                       min_samples_split=10,
+                                       n_estimators=200)
         model.fit(df_x, df_train_y)
     elif modelType == "BaggingRegressor":
         # try bagging regressor
         from sklearn.ensemble import BaggingRegressor
         from sklearn.tree import DecisionTreeRegressor
+        # grid search for bagging regressor
+        bagging_regressor_param_grid = {
+            "n_estimators": [10, 25, 35, 45, 55, 60, 100, 200],
+            "max_samples": [10, 25, 35, 45, 55, 60],
+            "max_features": [10, 25, 35, 45, 55, 60],
+            "bootstrap": [True, False],
+        }
+        #bagging_regressor_grid = GridSearchCV(BaggingRegressor(), cv=5, param_grid=bagging_regressor_param_grid, n_jobs=-1)
+        #bagging_regressor_grid.fit(df_x, df_y)
+        #print(bagging_regressor_grid.best_estimator_)
+
         bagging_regressor = BaggingRegressor(
             DecisionTreeRegressor(),
-            n_estimators=500,
-            max_samples=100,
-            bootstrap=True,
+            n_estimators=100,
+            max_samples=60,
+            max_features=60,
+            bootstrap=False,
             n_jobs=-1,
-            oob_score=True
         )
         bagging_regressor.fit(df_x, df_train_y)
         model = bagging_regressor
+    elif modelType == "HalvingGridSearch":
+        # HalvingRandomSearchCV
+        from sklearn.datasets import load_iris
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.experimental import enable_halving_search_cv  # noqa
+        from sklearn.model_selection import HalvingGridSearchCV
+
+        X, y = load_iris(return_X_y=True)
+        clf = RandomForestClassifier(random_state=0)
+
+        param_grid = {
+            "max_depth": [3,5,20, None],
+            "max_features": [1, 3, 10],
+            "min_samples_split": [2, 3, 10],
+            "min_samples_leaf": [1, 3, 10],
+            "bootstrap": [True, False],
+            "criterion": ["gini", "entropy"],
+        }
+        # search = HalvingGridSearchCV(
+        #     clf,
+        #     param_grid,
+        #     resource='n_estimators',
+        #     max_resources=10,
+        #     random_state=0).fit(X, y)
+
+        # print(search.best_params_)
+
+        # train model RandomForestClassifier
+        model = RandomForestClassifier(random_state=0, bootstrap=False, criterion='gini', max_depth=3,
+                                       min_samples_leaf=1, min_samples_split=5, n_estimators=100, max_features=10, )
+        model.fit(df_x, df_train_y)
+    elif modelType == "GradientBoostingRegressor":
+        # try gradient boosting
+        from sklearn.ensemble import GradientBoostingRegressor
+        # grid search for gradient boosting
+        gradient_boosting_param_grid = {
+            "n_estimators": [10, 25, 35, 45, 55, 60, 100],
+            "max_depth": [10, 25, 35, 45, 55],
+            "min_samples_split": [10, 25, 35, 45, 55],
+            "min_samples_leaf": [10, 25, 35, 45, 55, 60],
+            "max_features": [10, 25, 35, 45, 55, 60],
+            "learning_rate": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
+            "subsample": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
+            "loss": ["ls", "lad", "huber", "quantile"]
+        }
+        #gradient_boosting_grid = GridSearchCV(GradientBoostingRegressor(), cv=5, param_grid=gradient_boosting_param_grid, n_jobs=-1)
+        #gradient_boosting_grid.fit(df_x, df_y)
+        #print(gradient_boosting_grid.best_estimator_)
+
+        model = GradientBoostingRegressor(learning_rate=0.1, loss='ls', max_depth=10, max_features=10, min_samples_leaf=10)
+
     else:
         print("train_model -> modelType not found")
 
@@ -189,7 +265,7 @@ df_train_y = df_train.SalePrice
 df_train_x_preprocessed, onehoencodertrained = preprocess_data('train', df_train_x)
 
 # Train model
-linear_model_trained = train_model('BaggingRegressor', df_train_x_preprocessed, df_train_y)
+linear_model_trained = train_model('random_forest', df_train_x_preprocessed, df_train_y)
 
 #######
 # PREDICTION
@@ -198,6 +274,13 @@ linear_model_trained = train_model('BaggingRegressor', df_train_x_preprocessed, 
 # Preprocess test data
 df_test_preprocessed, test = preprocess_data('test', df_test, onehoencodertrained)
 prediction = linear_model_trained.predict(df_test_preprocessed)
+
+# print root mean squared error
+from sklearn.metrics import mean_squared_error
+from math import sqrt
+
+rms = sqrt(mean_squared_error(df_train_y, linear_model_trained.predict(df_train_x_preprocessed)))
+print("Root mean squared error: {}".format(rms))
 
 # Save to csv
 config.generate_submission(df_test, prediction)
